@@ -19,12 +19,13 @@ import mysql from 'mysql2/promise';
 // Read connection parameters from environment variables.
 // All values default to the local development profile specified in the SPMP.
 // ---------------------------------------------------------------------------
+// Support both local .env names and Railway's auto-injected MySQL plugin names.
 const {
-  DB_HOST            = 'localhost',
-  DB_PORT            = '3306',
-  DB_USER            = 'root',
-  DB_PASSWORD        = '12345@Password',
-  DB_NAME            = 'idms_db',
+  DB_HOST            = process.env.MYSQLHOST     || 'localhost',
+  DB_PORT            = process.env.MYSQLPORT     || '3306',
+  DB_USER            = process.env.MYSQLUSER     || 'root',
+  DB_PASSWORD        = process.env.MYSQLPASSWORD || '12345@Password',
+  DB_NAME            = process.env.MYSQLDATABASE || 'idms_db',
   DB_CONNECTION_LIMIT = '10',
 } = process.env;
 

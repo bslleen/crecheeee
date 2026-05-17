@@ -91,7 +91,13 @@ app.get('/health', (_req, res) => {
 // Static files and API routers
 // =============================================================================
 
-app.use(express.static(join(__dirname, '..', 'public')));
+// In production Railway serves the built React app; in development the Vite
+// dev server runs separately and proxies /api to this backend.
+const staticDir = NODE_ENV === 'production'
+  ? join(__dirname, '..', 'frontend', 'dist')
+  : join(__dirname, '..', 'public');
+
+app.use(express.static(staticDir));
 
 app.use('/api/auth',         authLimiter, authRoutes);
 app.use('/api/admin/users',  apiLimiter,  userRoutes);
@@ -101,10 +107,14 @@ app.use('/api/attendance',   apiLimiter,  attendanceRoutes);
 app.use('/api',              apiLimiter,  protectedRoutes);
 
 // =============================================================================
-// 404 catch-all
+// SPA fallback — serve index.html for every non-API route so React Router
+// can handle /dashboard, /children, /schedule, etc. on the client side.
 // =============================================================================
 
-app.use((req, res) => {
+app.get('*', (req, res) => {
+  if (NODE_ENV === 'production') {
+    return res.sendFile(join(staticDir, 'index.html'));
+  }
   res.status(404).json({
     success: false,
     message: `Route ${req.method} ${req.url} not found.`,
