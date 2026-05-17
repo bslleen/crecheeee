@@ -1,16 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-
-/* ─── Palette ─────────────────────────────────────────────────────────────── */
-const P = {
-  grass:  '#2BB39B',
-  sky:    '#82B3E1',
-  candy:  '#F5B5CC',
-  crayon: '#EB5E5A',
-  sun:    '#FBB92A',
-  dark:   '#1a1a2e',
-  darker: '#12121f',
-}
+import Layout, { P } from '../components/Layout.jsx'
 
 /* ─── Static dashboard data ───────────────────────────────────────────────── */
 const DAILY_OPS = [
@@ -78,67 +68,6 @@ function ProgressBar({ value, max = 1, color }) {
   )
 }
 
-/* ─── Top info bar ────────────────────────────────────────────────────────── */
-function TopBar({ user }) {
-  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  return (
-    <div style={{ background: P.darker, color: '#c8d6e5', padding: '8px 0', fontSize: 13 }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', gap: 32, flexWrap: 'wrap' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ background: P.grass, borderRadius: '50%', width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>📅</span>
-          {today}
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ background: P.sky, borderRadius: '50%', width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>✉</span>
-          {user?.email}
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ background: P.sun, borderRadius: '50%', width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>🏷</span>
-          Role: <strong style={{ color: '#fff', marginLeft: 4 }}>{user?.role}</strong>
-        </span>
-      </div>
-    </div>
-  )
-}
-
-/* ─── Navbar ──────────────────────────────────────────────────────────────── */
-function Navbar({ active, setActive, onLogout }) {
-  const links = ['Home', 'Children', 'Schedule', 'Transport', 'Catering']
-  return (
-    <nav style={{ background: P.dark, position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
-        {/* Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ background: P.grass, borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#fff', fontSize: 15, letterSpacing: 1 }}>ID</div>
-          <span style={{ color: '#fff', fontWeight: 800, fontSize: 18, letterSpacing: 0.5 }}>IDMS</span>
-        </div>
-
-        {/* Links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {links.map(l => (
-            <button key={l} onClick={() => setActive(l.toLowerCase())}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: active === l.toLowerCase() ? P.sun : '#c8d6e5',
-                fontWeight: active === l.toLowerCase() ? 700 : 500,
-                fontSize: 14, padding: '8px 14px', borderRadius: 8,
-                borderBottom: active === l.toLowerCase() ? `2px solid ${P.sun}` : '2px solid transparent',
-                transition: 'all .2s',
-              }}>
-              {l}
-            </button>
-          ))}
-        </div>
-
-        {/* Logout */}
-        <button onClick={onLogout}
-          style={{ background: 'rgba(235,94,90,0.15)', border: '1px solid rgba(235,94,90,0.4)', color: P.crayon, borderRadius: 10, padding: '7px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-          ↩ Sign Out
-        </button>
-      </div>
-    </nav>
-  )
-}
 
 /* ─── Hero section ────────────────────────────────────────────────────────── */
 function Hero({ user }) {
@@ -392,8 +321,109 @@ function TransportSection() {
   )
 }
 
+/* ─── Live classroom watch with educator assignment ───────────────────────── */
+function ClassroomWatch({ token }) {
+  const [classrooms, setClassrooms] = useState([])
+  const [educators,  setEducators]  = useState([])
+  const [saving,     setSaving]     = useState(null)  // classroom_id being saved
+  const [toast,      setToast]      = useState('')
+
+  const auth = { Authorization: `Bearer ${token}` }
+
+  useEffect(() => {
+    async function load() {
+      const [clsRes, usrRes] = await Promise.all([
+        fetch('/api/classrooms',   { headers: auth }),
+        fetch('/api/admin/users',  { headers: auth }),
+      ])
+      const clsData = await clsRes.json()
+      const usrData = await usrRes.json()
+      if (clsData.success) setClassrooms(clsData.classrooms)
+      if (usrData.success) setEducators(usrData.users.filter(u => u.role_name === 'Educator'))
+    }
+    if (token) load()
+  }, [token])
+
+  async function assignEducator(classroomId, educatorId) {
+    setSaving(classroomId)
+    try {
+      const res  = await fetch(`/api/classrooms/${classroomId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...auth },
+        body: JSON.stringify({ educatorId: educatorId === '' ? null : Number(educatorId) }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setClassrooms(prev => prev.map(c =>
+          c.classroom_id === classroomId
+            ? { ...c, educator_id: educatorId === '' ? null : Number(educatorId),
+                educator_name: educators.find(e => e.user_id === Number(educatorId))?.full_name ?? null }
+            : c
+        ))
+        setToast('Educator assigned.')
+        setTimeout(() => setToast(''), 2500)
+      }
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 20, padding: 32, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1e293b' }}>🏫 Classroom Watch</h3>
+        {toast && (
+          <span style={{ background: 'rgba(43,179,155,0.12)', color: P.grass, fontSize: 13, fontWeight: 700, padding: '6px 14px', borderRadius: 99 }}>
+            ✓ {toast}
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
+        {classrooms.map(c => {
+          const enrolled = Number(c.enrolled_count ?? 0)
+          const cap      = Number(c.max_capacity)
+          const near     = pct(enrolled, cap) >= 90
+          const isBusy   = saving === c.classroom_id
+          return (
+            <div key={c.classroom_id} style={{ border: `2px solid ${c.color_tag}30`, borderRadius: 14, padding: 18, background: `${c.color_tag}08` }}>
+              {/* classroom name + capacity */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: c.color_tag, display: 'inline-block' }} />
+                  <span style={{ fontWeight: 700, color: '#1e293b', fontSize: 15 }}>{c.name}</span>
+                </div>
+                <span style={{ fontWeight: 700, fontSize: 13, color: near ? P.sun : P.grass }}>{enrolled}/{cap}</span>
+              </div>
+
+              {/* capacity bar */}
+              <div style={{ marginBottom: 14 }}>
+                <ProgressBar value={enrolled} max={cap} color={near ? P.sun : c.color_tag} />
+              </div>
+
+              {/* educator assignment dropdown */}
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 4 }}>
+                Assigned Educator
+              </label>
+              <select
+                disabled={isBusy}
+                value={c.educator_id ?? ''}
+                onChange={e => assignEducator(c.classroom_id, e.target.value)}
+                style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 8, padding: '7px 10px', fontSize: 13, background: '#fff', color: '#334155', cursor: isBusy ? 'not-allowed' : 'pointer', opacity: isBusy ? 0.6 : 1 }}>
+                <option value="">— Unassigned —</option>
+                {educators.map(e => (
+                  <option key={e.user_id} value={e.user_id}>{e.full_name}</option>
+                ))}
+              </select>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Admin control panel — Director only ─────────────────────────────────── */
-function AdminSection() {
+function AdminSection({ token }) {
   return (
     <section style={{ padding: '72px 24px', background: `linear-gradient(120deg, #fffbeb 0%, #fef9ec 100%)`, borderTop: `4px solid ${P.sun}` }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
@@ -417,26 +447,8 @@ function AdminSection() {
           ))}
         </div>
 
-        {/* classrooms */}
-        <div style={{ background: '#fff', borderRadius: 20, padding: 32, boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
-          <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1e293b', marginBottom: 24 }}>🏫 Classroom Watch</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
-            {CLASSROOMS.map(c => {
-              const p = pct(c.enrolled, c.cap)
-              const near = p >= 90
-              return (
-                <div key={c.name} style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontWeight: 700, color: '#1e293b' }}>{c.name}</span>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: near ? P.sun : P.grass }}>{c.enrolled}/{c.cap}</span>
-                  </div>
-                  <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>{c.educator}</p>
-                  <ProgressBar value={c.enrolled} max={c.cap} color={near ? P.sun : P.grass} />
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        {/* classrooms — live data */}
+        <ClassroomWatch token={token} />
       </div>
     </section>
   )
@@ -484,58 +496,13 @@ function JwtSection({ token }) {
   )
 }
 
-/* ─── Footer ──────────────────────────────────────────────────────────────── */
-function Footer() {
-  const cols = [
-    { title: 'IDMS Platform', items: ['Home', 'Children', 'Schedule', 'Transport', 'Catering'] },
-    { title: 'Modules',       items: ['Attendance Tracking', 'Bus Routing', 'Meal Planning', 'Staff Management'] },
-    { title: 'Support',       items: ['Documentation', 'Contact Admin', 'System Logs', 'Help Centre'] },
-  ]
-  return (
-    <footer style={{ background: P.darker, color: '#94a3b8', padding: '56px 24px 24px' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 48, marginBottom: 48, flexWrap: 'wrap' }}>
-          {/* brand */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <div style={{ background: P.grass, borderRadius: 10, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#fff', fontSize: 14 }}>ID</div>
-              <span style={{ color: '#fff', fontWeight: 800, fontSize: 18 }}>IDMS</span>
-            </div>
-            <p style={{ lineHeight: 1.7, fontSize: 14 }}>Integrated Daycare Management System — unifying attendance, transport, catering, and staff management under one platform.</p>
-            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-              {[P.grass, P.sky, P.candy, P.sun, P.crayon].map(c => (
-                <span key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c, display: 'inline-block' }} />
-              ))}
-            </div>
-          </div>
-          {/* link cols */}
-          {cols.map(({ title, items }) => (
-            <div key={title}>
-              <h4 style={{ color: '#fff', fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{title}</h4>
-              <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {items.map(i => <li key={i} style={{ fontSize: 14, cursor: 'pointer' }}>→ {i}</li>)}
-              </ul>
-            </div>
-          ))}
-        </div>
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 24, textAlign: 'center', fontSize: 13 }}>
-          © {new Date().getFullYear()} IDMS · Integrated Daycare Management System · All rights reserved
-        </div>
-      </div>
-    </footer>
-  )
-}
-
 /* ─── Root dashboard ──────────────────────────────────────────────────────── */
 export default function BentoDashboard() {
-  const { user, token, logout } = useAuth()
-  const [active, setActive]     = useState('home')
-  const isDirector              = user?.role === 'Director'
+  const { user, token } = useAuth()
+  const isDirector = user?.role === 'Director'
 
   return (
-    <div style={{ minHeight: '100vh', fontFamily: "'Segoe UI', system-ui, sans-serif", background: '#f8fafc' }}>
-      <TopBar    user={user} />
-      <Navbar    active={active} setActive={setActive} onLogout={logout} />
+    <Layout>
       <Hero      user={user} />
       <ServiceBlocks />
       <PerformanceSection />
@@ -544,9 +511,8 @@ export default function BentoDashboard() {
       <CounterSection />
       <ActivitySection />
       <TransportSection />
-      {isDirector && <AdminSection />}
+      {isDirector && <AdminSection token={token} />}
       <JwtSection token={token} />
-      <Footer />
-    </div>
+    </Layout>
   )
 }

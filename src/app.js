@@ -5,9 +5,12 @@ import helmet             from 'helmet';
 import cors               from 'cors';
 import { rateLimit }      from 'express-rate-limit';
 
-import authRoutes      from './routes/authRoutes.js';
-import protectedRoutes from './routes/protectedRoutes.js';
-import userRoutes      from './routes/userRoutes.js';
+import authRoutes       from './routes/authRoutes.js';
+import protectedRoutes  from './routes/protectedRoutes.js';
+import userRoutes       from './routes/userRoutes.js';
+import classroomRoutes  from './routes/classroomRoutes.js';
+import childrenRoutes   from './routes/childrenRoutes.js';
+import attendanceRoutes from './routes/attendanceRoutes.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -92,6 +95,9 @@ app.use(express.static(join(__dirname, '..', 'public')));
 
 app.use('/api/auth',         authLimiter, authRoutes);
 app.use('/api/admin/users',  apiLimiter,  userRoutes);
+app.use('/api/classrooms',   apiLimiter,  classroomRoutes);
+app.use('/api/children',     apiLimiter,  childrenRoutes);
+app.use('/api/attendance',   apiLimiter,  attendanceRoutes);
 app.use('/api',              apiLimiter,  protectedRoutes);
 
 // =============================================================================
