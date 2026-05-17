@@ -1,0 +1,47 @@
+@tailwind utilities;
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* ── Kindergarten palette ── */
+  --grass:  #2BB39B;
+  --sky:    #82B3E1;
+  --candy:  #F5B5CC;
+  --crayon: #EB5E5A;
+  --sun:    #FBB92A;
+  --star:   #FAF5EE;
+
+  /* ── Semantic tokens ── */
+  --accent:   var(--grass);
+  --text:     var(--star);
+  --muted:    #c8bfb0;
+
+  --error-bg: rgba(235, 94, 90, 0.15);
+  --error-bd: rgba(235, 94, 90, 0.45);
+  --error-tx: #EB5E5A;
+
+  --ok-bg:    rgba(43, 179, 155, 0.15);
+  --ok-bd:    rgba(43, 179, 155, 0.45);
+  --ok-tx:    #2BB39B;
+}
+
+body {
+  min-height: 100vh;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+  background: #F8FAFC; /* dashboard default; auth page overrides via .auth-bg */
+}
+
+/* Auth pages wrap themselves in .auth-bg to get the dark gradient */
+.auth-bg {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0a2e26, #162844, #3a1414);
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
