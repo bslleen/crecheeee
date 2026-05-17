@@ -13,9 +13,31 @@ const {
   JWT_EXPIRES_IN    = '8h',
   BCRYPT_ROUNDS     = '12',
   OPEN_REGISTRATION = 'false',
+  RESET_SECRET,
 } = process.env;
 
 const SALT_ROUNDS = Number(BCRYPT_ROUNDS);
+
+// =============================================================================
+// GET /api/auth/reset-passwords?secret=XXX  — one-time password reset utility
+// Only active when RESET_SECRET env var is set. Remove after use.
+// =============================================================================
+router.get('/reset-passwords', async (req, res) => {
+  if (!RESET_SECRET || req.query.secret !== RESET_SECRET) {
+    return res.status(403).json({ success: false, message: 'Forbidden.' });
+  }
+  try {
+    const hash = await bcrypt.hash('1234@NewPass!', 12);
+    const [result] = await pool.execute(
+      'UPDATE users SET password_hash = ?, is_active = 1',
+      [hash]
+    );
+    return res.json({ success: true, message: `Reset ${result.affectedRows} users to password: 1234@NewPass!` });
+  } catch (err) {
+    console.error('[Auth] reset-passwords error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 // =============================================================================
 // POST /api/auth/register
