@@ -5,12 +5,14 @@ import helmet             from 'helmet';
 import cors               from 'cors';
 import { rateLimit }      from 'express-rate-limit';
 
-import authRoutes       from './routes/authRoutes.js';
-import protectedRoutes  from './routes/protectedRoutes.js';
-import userRoutes       from './routes/userRoutes.js';
-import classroomRoutes  from './routes/classroomRoutes.js';
-import childrenRoutes   from './routes/childrenRoutes.js';
-import attendanceRoutes from './routes/attendanceRoutes.js';
+import authRoutes          from './routes/authRoutes.js';
+import protectedRoutes     from './routes/protectedRoutes.js';
+import userRoutes          from './routes/userRoutes.js';
+import classroomRoutes     from './routes/classroomRoutes.js';
+import childrenRoutes      from './routes/childrenRoutes.js';
+import attendanceRoutes    from './routes/attendanceRoutes.js';
+import registrationRoutes  from './routes/registrationRoutes.js';
+import notificationsRoutes from './routes/notificationsRoutes.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -99,12 +101,14 @@ const staticDir = NODE_ENV === 'production'
 
 app.use(express.static(staticDir));
 
-app.use('/api/auth',         authLimiter, authRoutes);
-app.use('/api/admin/users',  apiLimiter,  userRoutes);
-app.use('/api/classrooms',   apiLimiter,  classroomRoutes);
-app.use('/api/children',     apiLimiter,  childrenRoutes);
-app.use('/api/attendance',   apiLimiter,  attendanceRoutes);
-app.use('/api',              apiLimiter,  protectedRoutes);
+app.use('/api/auth',          authLimiter, authRoutes);
+app.use('/api/admin/users',   apiLimiter,  userRoutes);
+app.use('/api/classrooms',    apiLimiter,  classroomRoutes);
+app.use('/api/children',      apiLimiter,  childrenRoutes);
+app.use('/api/attendance',    apiLimiter,  attendanceRoutes);
+app.use('/api/registrations', apiLimiter,  registrationRoutes);
+app.use('/api/notifications', apiLimiter,  notificationsRoutes);
+app.use('/api',               apiLimiter,  protectedRoutes);
 
 // =============================================================================
 // SPA fallback — serve index.html for every non-API route so React Router

@@ -1,0 +1,348 @@
+================================================================================
+IDMS — Institution Daycare Management System
+Full System Documentation: MCD / MLD / UML
+================================================================================
+
+
+================================================================================
+1. ACTORS
+================================================================================
+
+| Actor                  | Role in system                                              |
+|------------------------|-------------------------------------------------------------|
+| Director               | Full access, manages users, classrooms, reports             |
+| Educator               | Manages own classroom, marks attendance, views schedule     |
+| Transport Coordinator  | Manages routes, vehicles, child transport assignments       |
+| Catering Staff         | Creates menus, meal plans, logs meals                       |
+| Parent                 | Views own child's profile, attendance, schedule, transport  |
+
+
+================================================================================
+2. FULL ENTITY LIST
+================================================================================
+
+--- IMPLEMENTED (Modules 1 & 2) ---
+
+Entity              | Key Attributes
+--------------------|--------------------------------------------------------------
+Role                | role_id, role_name
+User                | user_id, full_name, email, password_hash, role_id, is_active
+Classroom           | classroom_id, name, educator_id, max_capacity, color_tag, is_active
+Child               | child_id, first_name, last_name, date_of_birth, gender,
+                    | classroom_id, medical_notes, dietary_notes,
+                    | emergency_contact, is_active
+ChildParentLink     | link_id, child_id, parent_user_id, relationship, is_primary_contact
+AttendanceLog       | log_id, child_id, attendance_date, status, check_in_time,
+                    | check_out_time, marked_by, notes
+AuditLog            | audit_id, user_id, action, target_module, ip_address,
+                    | metadata, created_at
+
+--- PLANNED (Modules 3–5) ---
+
+Entity              | Key Attributes
+--------------------|--------------------------------------------------------------
+Activity            | activity_id, name, description, type (Educational/Physical/Creative)
+Schedule            | schedule_id, classroom_id, day_of_week, start_time, end_time, activity_id
+Vehicle             | vehicle_id, plate_number, capacity, driver_id (→ User)
+Route               | route_id, name, description, vehicle_id
+TransportAssignment | assignment_id, child_id, route_id, pickup_address,
+                    | pickup_time, direction (AM/PM)
+TransportLog        | log_id, child_id, route_id, date,
+                    | status (picked_up/dropped_off/absent), driver_id
+Menu                | menu_id, date, meal_type (breakfast/lunch/snack),
+                    | description, allergens
+MealPlan            | plan_id, classroom_id, menu_id, date
+MealLog             | log_id, child_id, menu_id, date, consumed, notes
+
+
+================================================================================
+3. MCD — Modèle Conceptuel de Données
+================================================================================
+
+Entities and relationships with cardinalities:
+
+Role ──(1,1)── HAS ──(0,N)── User
+User ──(0,1)── ASSIGNED_TO ──(0,N)── Classroom
+Child ──(N,1)── BELONGS_TO ──(1,N)── Classroom
+Child ──(N,M)── LINKED_TO (via ChildParentLink) ── User[Parent]
+Child ──(1,N)── HAS ────────────────────────────── AttendanceLog
+User ──(0,N)── MARKS ───────────────────────────── AttendanceLog
+User ──(0,N)── GENERATES ───────────────────────── AuditLog
+
+-- Module 3: Schedule
+Classroom ──(1,N)── HAS ──────── Schedule
+Schedule ──(N,1)── CONTAINS ──── Activity
+
+-- Module 4: Transport
+Child ──(N,M)── ASSIGNED_TO (via TransportAssignment) ── Route
+Route ──(N,1)── USES ──────────── Vehicle
+Child ──(1,N)── HAS ────────────── TransportLog
+User[TransportCoord] ──(0,N)── LOGS ── TransportLog
+
+-- Module 5: Catering
+Classroom ──(N,M)── FOLLOWS (via MealPlan) ── Menu
+Child ──(1,N)── HAS ────────────── MealLog
+MealLog ──(N,1)── REFERENCES ───── Menu
+
+
+================================================================================
+4. MLD — Modèle Logique de Données (Relational Schema)
+================================================================================
+
+Notation: #attr = primary key, attr→table = foreign key
+
+--- Module 1: User & Access Management ---
+
+roles(
+  #role_id,
+  role_name
+)
+
+users(
+  #user_id,
+  full_name,
+  email,
+  password_hash,
+  role_id → roles,
+  is_active,
+  created_at,
+  updated_at
+)
+
+audit_logs(
+  #audit_id,
+  user_id → users,
+  action,
+  target_module,
+  ip_address,
+  metadata,
+  created_at
+)
+
+--- Module 2: Child & Attendance Management ---
+
+classrooms(
+  #classroom_id,
+  name,
+  educator_id → users,
+  max_capacity,
+  color_tag,
+  is_active
+)
+
+children(
+  #child_id,
+  first_name,
+  last_name,
+  date_of_birth,
+  gender,
+  classroom_id → classrooms,
+  medical_notes,
+  dietary_notes,
+  emergency_contact,
+  emergency_phone,
+  is_active,
+  enrolled_at
+)
+
+child_parent_link(
+  #link_id,
+  child_id → children,
+  parent_user_id → users,
+  relationship,
+  is_primary_contact
+  UNIQUE(child_id, parent_user_id)
+)
+
+attendance_logs(
+  #log_id,
+  child_id → children,
+  attendance_date,
+  status,
+  check_in_time,
+  check_out_time,
+  marked_by → users,
+  notes
+  UNIQUE(child_id, attendance_date)
+)
+
+--- Module 3: Schedule Management ---
+
+activities(
+  #activity_id,
+  name,
+  description,
+  type
+)
+
+schedules(
+  #schedule_id,
+  classroom_id → classrooms,
+  day_of_week,
+  start_time,
+  end_time,
+  activity_id → activities
+)
+
+--- Module 4: Transport Management ---
+
+vehicles(
+  #vehicle_id,
+  plate_number,
+  capacity,
+  driver_id → users
+)
+
+routes(
+  #route_id,
+  name,
+  description,
+  vehicle_id → vehicles
+)
+
+transport_assignments(
+  #assignment_id,
+  child_id → children,
+  route_id → routes,
+  pickup_address,
+  pickup_time,
+  direction
+  UNIQUE(child_id, route_id, direction)
+)
+
+transport_logs(
+  #log_id,
+  child_id → children,
+  route_id → routes,
+  date,
+  status,
+  driver_id → users
+)
+
+--- Module 5: Catering Management ---
+
+menus(
+  #menu_id,
+  date,
+  meal_type,
+  description,
+  allergens
+)
+
+meal_plans(
+  #plan_id,
+  classroom_id → classrooms,
+  menu_id → menus,
+  date
+  UNIQUE(classroom_id, date, meal_type)
+)
+
+meal_logs(
+  #log_id,
+  child_id → children,
+  menu_id → menus,
+  date,
+  consumed,
+  notes
+)
+
+
+================================================================================
+5. UML — Use Case Diagram (by actor)
+================================================================================
+
+DIRECTOR
+  - Manage users (create, activate, deactivate)
+  - Assign educators to classrooms
+  - View all classrooms and children
+  - View attendance reports (all classrooms)
+  - View audit logs
+  - Manage catering menus and meal plans
+  - View transport routes
+
+EDUCATOR
+  - View own classroom children
+  - Mark / update daily attendance
+  - View weekly schedule for own classroom
+  - Enrol new child
+
+TRANSPORT COORDINATOR
+  - Manage vehicles and routes
+  - Assign children to routes
+  - Log daily transport status (picked up / dropped off / absent)
+
+CATERING STAFF
+  - Create and edit menus
+  - Assign meal plans to classrooms
+  - Log daily meal consumption per child
+
+PARENT
+  - View own child's profile
+  - View own child's attendance history
+  - View own child's schedule
+  - View own child's transport assignment
+  - View own child's meal plan
+
+
+================================================================================
+6. UML — Key Sequence Diagrams
+================================================================================
+
+1. LOGIN
+   Client → POST /api/auth/login
+          → validate input
+          → query users JOIN roles WHERE email = ?
+          → bcrypt.compare(password, hash)
+          → jwt.sign({ userId, roleId, roleName })
+          → return { token, user }
+
+2. MARK ATTENDANCE
+   Educator → POST /api/attendance/mark
+            → authenticate (JWT)
+            → checkRole(Director | Educator)
+            → if Educator: verify child is in own classroom
+            → INSERT ... ON DUPLICATE KEY UPDATE attendance_logs
+            → logAction(audit)
+            → return { success }
+
+3. ENROL CHILD
+   Director → POST /api/children
+            → authenticate (JWT)
+            → checkRole(Director | Educator)
+            → validate input
+            → INSERT INTO children
+            → return { child_id, profile }
+
+4. ASSIGN EDUCATOR TO CLASSROOM
+   Director → PATCH /api/classrooms/:id
+            → authenticate (JWT)
+            → checkRole(Director)
+            → UPDATE classrooms SET educator_id = ?
+            → return { updated classroom }
+
+5. VIEW CHILD ATTENDANCE HISTORY (Parent)
+   Parent → GET /api/attendance/child/:id
+          → authenticate (JWT)
+          → checkRole(Director | Educator | Parent)
+          → if Parent: SELECT 1 FROM child_parent_link WHERE child_id = ? AND parent_user_id = ?
+          → SELECT attendance_logs WHERE child_id = ? last 60 days
+          → return { child, stats, logs }
+
+
+================================================================================
+7. IMPLEMENTATION STATUS
+================================================================================
+
+Module                          | Status
+--------------------------------|----------
+M1: User & Access Management    | Done
+M2: Child & Attendance Mgmt     | Done
+M3: Schedule Management         | Planned
+M4: Transport Management        | Planned
+M5: Catering Management         | Planned
+
+NOTE: The roles table already seeds all 5 roles (Director, Educator,
+Transport Coordinator, Catering Staff, Parent), so the database is
+designed for the full system from day one.
+
+================================================================================

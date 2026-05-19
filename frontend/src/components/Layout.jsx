@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import NotificationsBell from './NotificationsBell.jsx'
 
 /* ─── Palette (shared across all pages) ───────────────────────────────────── */
 export const P = {
@@ -37,11 +38,12 @@ function TopBar({ user }) {
 
 /* ─── Navbar (navigation-aware) ───────────────────────────────────────────── */
 const NAV_LINKS = [
-  { label: 'Home',      path: '/dashboard' },
-  { label: 'Children',  path: '/children'  },
-  { label: 'Schedule',  path: '/schedule'  },
-  { label: 'Transport', path: '/transport' },
-  { label: 'Catering',  path: '/catering'  },
+  { label: 'Home',          path: '/dashboard'     },
+  { label: 'Children',      path: '/children'      },
+  { label: 'Registrations', path: '/registrations' },
+  { label: 'Schedule',      path: '/schedule'      },
+  { label: 'Transport',     path: '/transport'     },
+  { label: 'Catering',      path: '/catering'      },
 ]
 
 function Navbar({ onLogout }) {
@@ -78,11 +80,14 @@ function Navbar({ onLogout }) {
           })}
         </div>
 
-        {/* Logout */}
-        <button onClick={onLogout}
-          style={{ background: 'rgba(235,94,90,0.15)', border: '1px solid rgba(235,94,90,0.4)', color: P.crayon, borderRadius: 10, padding: '7px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-          ↩ Sign Out
-        </button>
+        {/* Notifications + Logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <NotificationsBell />
+          <button onClick={onLogout}
+            style={{ background: 'rgba(235,94,90,0.15)', border: '1px solid rgba(235,94,90,0.4)', color: P.crayon, borderRadius: 10, padding: '7px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+            ↩ Sign Out
+          </button>
+        </div>
       </div>
     </nav>
   )

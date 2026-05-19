@@ -67,18 +67,22 @@ router.get(
         );
 
       } else {
-        // Parents see only their linked children
+        // Parents see their active children plus any approved/enrolled
+        // registrations that haven't been activated yet — so the dashboard
+        // reflects every child they have a relationship with.
         [rows] = await pool.execute(
           `SELECT ch.child_id, ch.first_name, ch.last_name, ch.date_of_birth,
                   ch.gender, ch.is_active, ch.enrolled_at,
+                  ch.enrollment_status,
                   cl.classroom_id, cl.name AS classroom_name, cl.color_tag,
                   cpl.relationship, cpl.is_primary_contact
            FROM   child_parent_link cpl
            JOIN   children  ch ON ch.child_id    = cpl.child_id
            LEFT JOIN classrooms cl ON cl.classroom_id = ch.classroom_id
            WHERE  cpl.parent_user_id = ?
-             AND  ch.is_active = 1
-           ORDER BY ch.last_name, ch.first_name`,
+             AND  ch.enrollment_status IN ('approved', 'enrolled', 'active')
+           ORDER BY FIELD(ch.enrollment_status, 'active', 'enrolled', 'approved'),
+                    ch.last_name, ch.first_name`,
           [req.user.userId]
         );
       }
