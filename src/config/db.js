@@ -21,13 +21,27 @@ import mysql from 'mysql2/promise';
 // ---------------------------------------------------------------------------
 // Support both local .env names and Railway's auto-injected MySQL plugin names.
 const {
-  DB_HOST            = process.env.MYSQLHOST     || 'localhost',
-  DB_PORT            = process.env.MYSQLPORT     || '3306',
-  DB_USER            = process.env.MYSQLUSER     || 'root',
-  DB_PASSWORD        = process.env.MYSQLPASSWORD || '12345@Password',
-  DB_NAME            = process.env.MYSQLDATABASE || 'idms_db',
+  // Support multiple env var naming conventions.
+  // Prefer explicit DB_* variables, otherwise fall back to Railway-style MYSQL*.
+  DB_HOST = process.env.DB_HOST ?? process.env.MYSQLHOST ?? 'localhost',
+  DB_PORT = process.env.DB_PORT ?? process.env.MYSQLPORT ?? '3306',
+  DB_USER = process.env.DB_USER ?? process.env.MYSQLUSER ?? 'root',
+  DB_PASSWORD =
+    process.env.DB_PASSWORD ??
+    process.env.MYSQLPASSWORD ??
+    process.env.MYSQL_PASSWORD ??
+    process.env.MYSQL_ROOT_PASSWORD ??
+    '12345@Password',
+  DB_NAME = process.env.DB_NAME ?? process.env.MYSQLDATABASE ?? 'idms_db',
   DB_CONNECTION_LIMIT = '10',
 } = process.env;
+
+if (!DB_PASSWORD) {
+  console.warn(
+    '[DB] Warning: DB_PASSWORD is empty. Set DB_PASSWORD or MYSQLPASSWORD (or MYSQL_PASSWORD / MYSQL_ROOT_PASSWORD) in your environment to connect.'
+  );
+}
+
 
 /**
  * Shared MySQL 8.x connection pool.
@@ -75,7 +89,15 @@ const pool = mysql.createPool({
       `(limit: ${DB_CONNECTION_LIMIT} connections)`
     );
   } catch (err) {
-    console.error('[DB] FATAL — Unable to connect to MySQL:', err.message);
+    console.error(
+      '[DB] FATAL — Unable to connect to MySQL.',
+      '\n  Host:', DB_HOST,
+      '\n  Port:', DB_PORT,
+      '\n  User:', DB_USER,
+      '\n  Database:', DB_NAME,
+      '\n  Error:', err.message
+    );
+    // Keep behavior strict in production, but in local dev we still want logs.
     process.exit(1);   // Non-zero exit signals failure to process managers (PM2, Docker, etc.)
   }
 })();
